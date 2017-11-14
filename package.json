@@ -1,6 +1,6 @@
 {
   "name": "@devctrl/communicator",
-  "version": "4.0.0",
+  "version": "4.1.0",
   "description": "Base device communicator files",
   "main": "index.js",
   "scripts": {
