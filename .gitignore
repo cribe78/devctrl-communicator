@@ -1,4 +1,6 @@
 *.js
 *.js.map
-!app.js
 node_modules/
+conf/
+npm-debug.log
+

@@ -1,4 +1,4 @@
-"use strict";
+#!/usr/bin/env node
 
 import * as io from "socket.io-client";
 import {
@@ -12,15 +12,17 @@ import {
     IDCDataUpdate,
     IndexedDataSet
 } from "@devctrl/common";
-import { EndpointCommunicator } from "../Communicators/EndpointCommunicator";
+import { EndpointCommunicator } from "./EndpointCommunicator";
 
 
 let debug = console.log;
 
 interface NControlConfig {
     wsUrl: string;
-    testString : string;
     endpointId : string;
+    ioPath: string;
+    authId: string;
+    endpointPassword: string;
 }
 
 
@@ -34,9 +36,6 @@ class NControl {
     communicator: EndpointCommunicator;
     syncControlsPassNumber: number = 0;
 
-    static bootstrap() {
-        return new NControl();
-    }
 
     constructor() {
         this.dataModel = new DCDataModel();
@@ -44,7 +43,7 @@ class NControl {
         this.controls = this.dataModel.tables[Control.tableStr] as IndexedDataSet<Control>;
     }
 
-    run(config: any) {
+    run(config: NControlConfig) {
         let self = this;
         this.config = <NControlConfig>config;
         debug(`connecting to ${config.wsUrl}${config.ioPath}`);
@@ -104,8 +103,6 @@ class NControl {
         this.io.on('control-updates', function(data) {
             self.handleControlUpdates(data);
         });
-
-        debug("testString is " + config.testString );
     }
 
     checkData() {
@@ -141,7 +138,7 @@ class NControl {
     }
 
     private addData(reqData: any, then: () => void) {
-        var self = this;
+        let self = this;
         this.io.emit('add-data', reqData, function(data) {
             if ( data.error ) {
                 debug("add-data error: " + data.error);
@@ -155,7 +152,7 @@ class NControl {
     }
 
     private getData(reqData: IDCDataRequest, then: () => void ) {
-        var self = this;
+        let self = this;
         this.io.emit('get-data', reqData, function(data) {
             if ( data.error ) {
                 debug("get-data error: " + data.error);
@@ -169,7 +166,7 @@ class NControl {
     }
 
     private updateData(reqData: IDCDataUpdate, then: () => void ) {
-        var self = this;
+        let self = this;
         this.io.emit('update-data', reqData, function(data) {
             if ( data.error ) {
                 debug("update-data error: " + data.error);
@@ -185,12 +182,11 @@ class NControl {
 
 
     getEndpointConfig() {
-        let self = this;
-        self.endpoint = self.dataModel.getItem(self.config.endpointId, Endpoint.tableStr) as Endpoint;
+        this.endpoint = this.dataModel.getItem(this.config.endpointId, Endpoint.tableStr) as Endpoint;
 
-        let reqData = self.endpoint.itemRequestData();
+        let reqData = this.endpoint.itemRequestData();
 
-        self.getData(reqData, self.getEndpointTypeConfig);
+        this.getData(reqData, this.getEndpointTypeConfig);
     }
 
     getEndpointTypeConfig() {
@@ -204,7 +200,7 @@ class NControl {
 
     guid() : string {
         return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
-            var r = Math.random()*16|0, v = c == 'x' ? r : (r&0x3|0x8);
+            let r = Math.random()*16|0, v = c == 'x' ? r : (r&0x3|0x8);
             return v.toString(16);
         });
     }
@@ -232,7 +228,6 @@ class NControl {
     }
 
     launchCommunicator() {
-        let self = this;
         if (! this.endpoint.type.dataLoaded) {
             debug("endpointType data is missing");
         }
@@ -251,11 +246,11 @@ class NControl {
 
             this.communicator.setConfig({
                 endpoint: this.endpoint,
-                controlUpdateCallback: function (control, value) {
-                    self.pushControlUpdate(control, value);
+                controlUpdateCallback: (control, value) => {
+                    this.pushControlUpdate(control, value);
                 },
-                statusUpdateCallback: function (status) {
-                    self.pushEndpointStatusUpdate(status);
+                statusUpdateCallback: (status) => {
+                    this.pushEndpointStatusUpdate(status);
                 }
             });
         }
@@ -351,5 +346,9 @@ class NControl {
 
 }
 
-let ncontrol = NControl.bootstrap();
-module.exports = ncontrol;
+
+let config = require("./config");
+let ncontrol = new NControl();
+
+ncontrol.run(config);
+
