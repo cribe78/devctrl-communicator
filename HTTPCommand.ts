@@ -1,4 +1,4 @@
-import {ControlData, Control} from "../app/shared/Control";
+import {ControlData, Control} from "@devctrl/common";
 import {sprintf} from "sprintf-js";
 let debug = console.log;
 

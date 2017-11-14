@@ -17,6 +17,7 @@
     "@devctrl/common": "^3.0.0",
     "@types/node": "^8.0.51",
     "@types/socket.io-client": "^1.4.31",
-    "socket.io-client": "^2.0.4"
+    "socket.io-client": "^2.0.4",
+    "sprintf-js": "^1.1.1"
   }
 }

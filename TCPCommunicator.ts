@@ -1,10 +1,13 @@
-import {EndpointCommunicator, IEndpointCommunicatorConfig} from "./EndpointCommunicator";
+import {EndpointCommunicator} from "./EndpointCommunicator";
 import { TCPCommand } from "./TCPCommand";
 import * as net from "net";
-import {Control} from "../app/shared/Control";
-import {ControlUpdateData} from "../app/shared/ControlUpdate";
-import {EndpointStatus} from "../app/shared/Endpoint";
-import {IndexedDataSet} from "../app/shared/DCDataModel";
+import {
+    Control,
+    ControlUpdateData,
+    EndpointStatus,
+    IndexedDataSet
+} from "@devctrl/common";
+
 
 export type TCPCommEncoding = "string" | "hex";
 

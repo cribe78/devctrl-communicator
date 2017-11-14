@@ -1,8 +1,11 @@
+import {
+    Control,
+    ControlUpdateData,
+    EndpointStatus,
+    Endpoint,
+    IndexedDataSet
+} from "@devctrl/common";
 
-import {Control} from "../app/shared/Control";
-import {ControlUpdateData} from "../app/shared/ControlUpdate";
-import {EndpointStatus, Endpoint} from "../app/shared/Endpoint";
-import {IndexedDataSet} from "../app/shared/DCDataModel";
 
 
 export interface IEndpointCommunicatorConfig {

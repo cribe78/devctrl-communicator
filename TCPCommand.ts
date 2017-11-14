@@ -1,10 +1,12 @@
 
-import {ControlUpdate, ControlUpdateData} from "../app/shared/ControlUpdate";
-import {Control, ControlData} from "../app/shared/Control";
+import {
+    ControlUpdate,
+    ControlUpdateData,
+    Control,
+    ControlData
+} from "@devctrl/common";
 import {sprintf} from "sprintf-js";
-import * as debugMod from "debug";
 
-//let debug = debugMod("comms");
 let debug = console.log;
 
 export interface ITCPCommandConfig {
