@@ -13,6 +13,7 @@ import {
     IndexedDataSet
 } from "@devctrl/common";
 import { EndpointCommunicator } from "./EndpointCommunicator";
+import {CommunicatorLoader} from "./CommunicatorLoader";
 
 
 let debug = console.log;
@@ -233,15 +234,20 @@ class NControl {
         }
 
         if (! this.communicator) {
-            let commClass = this.endpoint.type.communicatorClass;
-            let requirePath = "../Communicators/" + commClass;
+            let commType = this.endpoint.type.communicatorClass;
+            let cl = new CommunicatorLoader();
 
-            debug(`instantiating communicator ${requirePath}`);
+            let commClass = cl.communicators[commType];
 
-            this.communicator = require(requirePath);
+            if (! commClass) {
+                throw new Error("communicator class not found: " + commType);
+            }
+
+            debug(`instantiating communicator ${commType}`);
+            this.communicator = new commClass();
 
             if (typeof this.communicator.setConfig !== 'function') {
-                debug("it doesn't look like you have your communicator class exported properly");
+                debug("it doesn't look like you have a valid communicator class");
             }
 
             this.communicator.setConfig({

@@ -6,7 +6,11 @@ import {
     IndexedDataSet
 } from "@devctrl/common";
 
-
+export interface ICommunicatorProtoPackage {
+    communicators: {
+        [index: string] : typeof EndpointCommunicator
+    }
+}
 
 export interface IEndpointCommunicatorConfig {
     endpoint: Endpoint
