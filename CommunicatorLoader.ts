@@ -60,8 +60,8 @@ export class CommunicatorLoader {
                 console.log(`module path found: ${modulePath}`);
                 let communicatorPackage : ICommunicatorProtoPackage = require(modulePath);
 
-                for (let commPath in communicatorPackage) {
-                    this.communicators[commPath] = communicatorPackage[commPath];
+                for (let commPath in communicatorPackage.communicators) {
+                    this.communicators[commPath] = communicatorPackage.communicators[commPath];
                 }
             }
         }
