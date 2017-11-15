@@ -12,7 +12,7 @@ import {
     IDCDataUpdate,
     IndexedDataSet
 } from "@devctrl/common";
-import { EndpointCommunicator } from "./EndpointCommunicator";
+import { EndpointCommunicator } from "@devctrl/lib-communicator";
 import {CommunicatorLoader} from "./CommunicatorLoader";
 
 
