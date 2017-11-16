@@ -1,5 +1,5 @@
 import * as cp from 'child_process';
-import {EndpointCommunicator} from "./EndpointCommunicator";
+import {EndpointCommunicator} from "@devctrl/lib-communicator";
 
 
 /*
@@ -28,7 +28,7 @@ export class CommunicatorLoader {
     constructor() {
         let outlines;
         // Find paths under node_modules to index.js files which contain "//devctrl-proto-package"
-        let out = cp.execSync('find .. -name index.js | xargs grep devctrl-proto-package');
+        let out = cp.execSync('find ./node_modules -name index.js | xargs grep devctrl-proto-package');
 
         outlines = out.toString().split('\n');
 
