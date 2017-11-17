@@ -28,8 +28,10 @@ if (typeof process.argv[2] !== 'undefined') {
   let configPath = "./conf/" + configArg + ".js";
 
   if (fs.existsSync(configPath)) {
-    console.log(`loading ${configPath}`);
-    customConfig = require("./conf/" + configArg);
+      // Use an absolute path to make sure require() looks in the CWD, not the config.js directory
+    let fullConfigPath = fs.realpathSync(configPath);
+    console.log(`loading ${fullConfigPath}`);
+    customConfig = require(fullConfigPath);
   }
   else {
     console.log(`${configPath} not found`);
