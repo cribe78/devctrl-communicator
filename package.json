@@ -2,7 +2,9 @@
   "name": "@devctrl/communicator",
   "version": "4.4.1",
   "description": "Base device communicator files",
-  "main": "index.js",
+  "bin": {
+    "dcc" : "./communicator.js"
+  },
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
@@ -11,7 +13,7 @@
     "url": "git+ssh://git@bitbucket.org/ufdwi/devctrl-communicator.git"
   },
   "author": "Chris Ribe",
-  "license": "GPL-3.0",
+  "license": "MIT",
   "homepage": "https://bitbucket.org/ufdwi/devctrl-communicator#readme",
   "dependencies": {
     "@devctrl/common": "^3.0.0",
