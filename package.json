@@ -1,9 +1,9 @@
 {
   "name": "@devctrl/communicator",
-  "version": "4.4.1",
+  "version": "4.4.2",
   "description": "Base device communicator files",
   "bin": {
-    "dcc" : "./communicator.js"
+    "dcc": "./communicator.js"
   },
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
