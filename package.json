@@ -1,6 +1,6 @@
 {
   "name": "@devctrl/communicator",
-  "version": "4.4.2",
+  "version": "4.4.3",
   "description": "Base device communicator files",
   "bin": {
     "dcc": "./communicator.js"
