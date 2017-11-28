@@ -4,3 +4,4 @@ node_modules/
 conf/
 npm-debug.log
 *.d.ts
+config.json
