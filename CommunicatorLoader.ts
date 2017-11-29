@@ -1,4 +1,5 @@
 import * as cp from 'child_process';
+import * as fs from 'fs';
 import {EndpointCommunicator} from "@devctrl/lib-communicator";
 
 
@@ -26,11 +27,26 @@ export class CommunicatorLoader {
     communicators = {};
 
     constructor() {
-        let outlines;
-        // Find paths under node_modules to index.js files which contain "//devctrl-proto-package"
-        let out = cp.execSync('find -L ./node_modules -name index.js | xargs grep devctrl-proto-package');
+        let outlines = [];
+        let dirs = [
+            './node_modules',
+            '../node_modules',
+            '/usr/lib/node_modules'
+        ];
 
-        outlines = out.toString().split('\n');
+        for (let dir of dirs) {
+            if (fs.existsSync(dir)) {
+                // Find paths under node_modules to index.js files which contain "//devctrl-proto-package"
+                try {
+                    let out = cp.execSync(`find -L ${dir} -name index.js | xargs grep devctrl-proto-package`);
+                    let outStr = out.toString();
+                    outlines = outlines.concat(outStr.split('\n'));
+                }
+                catch (e) {
+                    console.log(`find devctrl-proto-package failed for ${dir}: ${e.error}`);
+                }
+            }
+        }
 
         for (let line of outlines) {
             if (line.length) {

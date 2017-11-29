@@ -1,5 +1,4 @@
 #!/usr/bin/env node
-
 import * as io from "socket.io-client";
 import {
     Control,
@@ -14,17 +13,10 @@ import {
 } from "@devctrl/common";
 import { EndpointCommunicator } from "@devctrl/lib-communicator";
 import {CommunicatorLoader} from "./CommunicatorLoader";
+import { DCConfig } from "./config";
 
 
 let debug = console.log;
-
-interface NControlConfig {
-    wsUrl: string;
-    endpointId : string;
-    ioPath: string;
-    authId: string;
-    endpointPassword: string;
-}
 
 
 class NControl {
@@ -33,7 +25,7 @@ class NControl {
     oldEndpoint: Endpoint;
     dataModel: DCDataModel;
     controls: IndexedDataSet<Control>;
-    config: NControlConfig;
+    config: DCConfig;
     communicator: EndpointCommunicator;
     syncControlsPassNumber: number = 0;
 
@@ -44,9 +36,9 @@ class NControl {
         this.controls = this.dataModel.tables[Control.tableStr] as IndexedDataSet<Control>;
     }
 
-    run(config: NControlConfig) {
+    run(config: DCConfig) {
         let self = this;
-        this.config = <NControlConfig>config;
+        this.config = <DCConfig>config;
         debug(`connecting to ${config.wsUrl}${config.ioPath}`);
         let connectOpts = {
             transports: ['websocket'],
@@ -352,9 +344,14 @@ class NControl {
 
 }
 
+let configName = "dcc";
+if (typeof process.argv[2] !== 'undefined') {
+    console.log("arg 2 is " + process.argv[2]);
+    configName = process.argv[2];
+}
 
-let config = require("./config");
-let ncontrol = new NControl();
 
-ncontrol.run(config);
+let config = new DCConfig(configName);
+let dcc = new NControl();
+dcc.run(config);
 
