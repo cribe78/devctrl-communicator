@@ -77,6 +77,7 @@ export class CommunicatorLoader {
                 let communicatorPackage : ICommunicatorProtoPackage = require(modulePath);
 
                 for (let commPath in communicatorPackage.communicators) {
+                    console.log("registering communicator " + commPath);
                     this.communicators[commPath] = communicatorPackage.communicators[commPath];
                 }
             }
