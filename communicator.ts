@@ -16,9 +16,6 @@ import {CommunicatorLoader} from "./CommunicatorLoader";
 import { DCConfig } from "./config";
 
 
-let debug = console.log;
-
-
 class NControl {
     io: SocketIOClient.Socket;
     endpoint: Endpoint;
@@ -32,14 +29,16 @@ class NControl {
 
     constructor() {
         this.dataModel = new DCDataModel();
-        this.dataModel.debug = console.log;
+        this.dataModel.debug = (msg) => {
+            this.log(msg, EndpointCommunicator.LOG_DATA_MODEL);
+        };
+
         this.controls = this.dataModel.tables[Control.tableStr] as IndexedDataSet<Control>;
     }
 
     run(config: DCConfig) {
-        let self = this;
         this.config = <DCConfig>config;
-        debug(`connecting to ${config.wsUrl}${config.ioPath}`);
+        this.log(`connecting to ${config.wsUrl}${config.ioPath}`);
         let connectOpts = {
             transports: ['websocket'],
             path : config.ioPath
@@ -49,16 +48,16 @@ class NControl {
 
         this.io = io.connect(config.wsUrl, connectOpts);
 
-        this.io.on('connect', function() {
-            debug("websocket client connected");
+        this.io.on('connect', () => {
+            this.log("websocket client connected");
 
             //Get endpoint data
-            self.getEndpointConfig();
-            self.registerEndpoint();
+            this.getEndpointConfig();
+            this.registerEndpoint();
         });
 
         this.io.on('connect_error', (err) => {
-            debug(`io connection error: ${err}`);
+            this.log(`io connection error: ${err}`);
         });
 
         this.io.on('reconnect', () => {
@@ -68,18 +67,18 @@ class NControl {
             }
         });
 
-        this.io.on('error', function(obj) {
-            debug(`websocket connection error: ${obj}`);
+        this.io.on('error', (obj) => {
+            this.log(`websocket connection error: ${obj}`);
         });
 
         this.io.on('control-data', data => {
-            self.oldEndpoint = new Endpoint(self.endpoint._id, <EndpointData>(self.endpoint.getDataObject()));
+            this.oldEndpoint = new Endpoint(this.endpoint._id, <EndpointData>(this.endpoint.getDataObject()));
 
             // Discard control data not related to this endpoint
             if (data.add && data.add.controls) {
                 let deleteIds = [];
                 for (let id in data.add.controls) {
-                    if (data.add.controls[id].endpoint_id !== self.endpoint._id) {
+                    if (data.add.controls[id].endpoint_id !== this.endpoint._id) {
                         deleteIds.push(id);
                     }
                 }
@@ -89,12 +88,12 @@ class NControl {
                 }
             }
 
-            self.dataModel.loadData(data);
-            self.checkData();
+            this.dataModel.loadData(data);
+            this.checkData();
         });
 
-        this.io.on('control-updates', function(data) {
-            self.handleControlUpdates(data);
+        this.io.on('control-updates', data => {
+            this.handleControlUpdates(data);
         });
     }
 
@@ -102,22 +101,30 @@ class NControl {
         // Check endpoint for configuration changes
         if (this.oldEndpoint.enabled != this.endpoint.enabled) {
             if (this.endpoint.enabled) {
-                debug("Endpoint enabled. Connecting");
+                this.log("Endpoint enabled. Connecting");
                 this.communicator.connect();
             }
             else {
-                debug("Endpoint disabled.  Disconnecting");
+                this.log("Endpoint disabled.  Disconnecting");
                 this.communicator.disconnect();
             }
         }
         else if (this.oldEndpoint.ip != this.endpoint.ip ||
                 this.oldEndpoint.port != this.endpoint.port ) {
-            debug("ip/port change. resetting communicator");
+            this.log("ip/port change. resetting communicator");
             this.communicator.disconnect();
             this.communicator.connect();
         }
     }
 
+    log(msg : string, tag = "default") {
+        if (this.communicator) {
+            this.communicator.log(msg, tag);
+        }
+        else {
+            console.log(msg);
+        }
+    }
 
     getControls() {
         let reqData = {
@@ -131,44 +138,41 @@ class NControl {
     }
 
     private addData(reqData: any, then: () => void) {
-        let self = this;
-        this.io.emit('add-data', reqData, function(data) {
+        this.io.emit('add-data', reqData, data => {
             if ( data.error ) {
-                debug("add-data error: " + data.error);
+                this.log("add-data error: " + data.error);
             }
             else {
-                self.dataModel.loadData(data);
+                this.dataModel.loadData(data);
             }
 
-            then.call(self);  // If the callback doesn't belong to this class, this could get weird
+            then.call(this);  // If the callback doesn't belong to this class, this could get weird
         });
     }
 
     private getData(reqData: IDCDataRequest, then: () => void ) {
-        let self = this;
-        this.io.emit('get-data', reqData, function(data) {
+        this.io.emit('get-data', reqData, data => {
             if ( data.error ) {
-                debug("get-data error: " + data.error);
+                this.log("get-data error: " + data.error);
             }
             else {
-                self.dataModel.loadData(data);
+                this.dataModel.loadData(data);
             }
 
-            then.call(self);  // If the callback doesn't belong to this class, this could get weird
+            then.call(this);  // If the callback doesn't belong to this class, this could get weird
         });
     }
 
     private updateData(reqData: IDCDataUpdate, then: () => void ) {
-        let self = this;
-        this.io.emit('update-data', reqData, function(data) {
+        this.io.emit('update-data', reqData, data => {
             if ( data.error ) {
-                debug("update-data error: " + data.error);
+                this.log("update-data error: " + data.error);
             }
             else {
-                self.dataModel.loadData(data);
+                this.dataModel.loadData(data);
             }
 
-            then.call(self);  // If the callback doesn't belong to this class, this could get weird
+            then.call(this);  // If the callback doesn't belong to this class, this could get weird
         });
     }
 
@@ -184,7 +188,7 @@ class NControl {
 
     getEndpointTypeConfig() {
         if (! this.endpoint.dataLoaded) {
-            debug("endpoint data is missing");
+            this.log("endpoint data is missing");
             return;
         }
 
@@ -204,7 +208,7 @@ class NControl {
 
             if (control.endpoint_id && control.endpoint_id == this.endpoint._id
             && update.status == "requested") {
-                debug(`control update: ${ control.name } : ${ update.value }`);
+                this.log(`control update: ${ control.name } : ${ update.value }`);
 
                 if (control.control_type == Control.CONTROL_TYPE_ECHO) {
                     // Just update the value and kick it back to the messenger
@@ -222,7 +226,7 @@ class NControl {
 
     launchCommunicator() {
         if (! this.endpoint.type.dataLoaded) {
-            debug("endpointType data is missing");
+            this.log("endpointType data is missing");
         }
 
         if (! this.communicator) {
@@ -235,11 +239,11 @@ class NControl {
                 throw new Error("communicator class not found: " + commType);
             }
 
-            debug(`instantiating communicator ${commType}`);
+            this.log(`instantiating communicator ${commType}`);
             this.communicator = new commClass();
 
             if (typeof this.communicator.setConfig !== 'function') {
-                debug("it doesn't look like you have a valid communicator class");
+                this.log("it doesn't look like you have a valid communicator class");
             }
 
             this.communicator.setConfig({
@@ -260,11 +264,11 @@ class NControl {
                 this.communicator.connect();
             }
             else {
-                debug("communicator already connected");
+                this.log("communicator already connected");
             }
         }
         else {
-            debug("endpoint not enabled, not connecting");
+            this.log("endpoint not enabled, not connecting");
         }
     }
 
@@ -329,14 +333,14 @@ class NControl {
             // newControls is an array of templates to create
             // Create new ControlTemplates on server
             if (newControls.length > 0) {
-                debug("adding new controls");
+                this.log("adding new controls");
                 this.addData({ controls: newControls}, this.syncControls);
 
                 return;
             }
         }
 
-        debug("controls successfully synced!");
+        this.log("controls successfully synced!");
 
         // Pass completed ControlTemplate set to communicator
         this.communicator.setTemplates(<IndexedDataSet<Control>>this.dataModel.tables[Control.tableStr]);

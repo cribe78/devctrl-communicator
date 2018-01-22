@@ -1,6 +1,5 @@
 
 
-/*
  - Communicator builds list of device controls (control templates)
  - Communicator syncs control list with messenger
  - device controls are paired with application controls based on endpoint and device control name
@@ -39,4 +38,15 @@
     - Control Updates:
         - not stored in database
         - value and source
- */
+
+
+
+   --- TCPCommunicator/Endpoint status management ---
+
+ - Is endpoint enabled?  (Endpoint.enabled)
+ - Is communicator running?
+ - Is device reachable (ping)?
+ - Is device connection established?
+ - Can communicator log in to device?
+ - Is device responsive?
+    - Keep log of last communication, establish maximum time between communication
