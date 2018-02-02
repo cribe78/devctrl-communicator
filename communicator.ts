@@ -2,28 +2,30 @@
 import * as io from "socket.io-client";
 import {
     Control,
+    ControlData,
     ControlUpdateData,
     DCDataModel,
     Endpoint,
     EndpointData,
-    EndpointStatus,
+    IEndpointStatus,
     IDCDataRequest,
     IDCDataUpdate,
     IndexedDataSet
 } from "@devctrl/common";
-import { EndpointCommunicator } from "@devctrl/lib-communicator";
+import { IEndpointCommunicator, EndpointCommunicator } from "@devctrl/lib-communicator";
 import {CommunicatorLoader} from "./CommunicatorLoader";
 import { DCConfig } from "./config";
+import {IDCDataExchange} from "../common/DCSerializable";
 
 
-class NControl {
+class DCCommunicator {
     io: SocketIOClient.Socket;
     endpoint: Endpoint;
     oldEndpoint: Endpoint;
     dataModel: DCDataModel;
     controls: IndexedDataSet<Control>;
     config: DCConfig;
-    communicator: EndpointCommunicator;
+    communicator: IEndpointCommunicator;
     syncControlsPassNumber: number = 0;
 
 
@@ -63,7 +65,7 @@ class NControl {
         this.io.on('reconnect', () => {
             this.registerEndpoint();
             if (this.endpoint) {
-                this.pushEndpointStatusUpdate(this.endpoint.status);
+                this.pushEndpointStatusUpdate(this.endpoint.epStatus);
             }
         });
 
@@ -72,23 +74,7 @@ class NControl {
         });
 
         this.io.on('control-data', data => {
-            this.oldEndpoint = new Endpoint(this.endpoint._id, <EndpointData>(this.endpoint.getDataObject()));
-
-            // Discard control data not related to this endpoint
-            if (data.add && data.add.controls) {
-                let deleteIds = [];
-                for (let id in data.add.controls) {
-                    if (data.add.controls[id].endpoint_id !== this.endpoint._id) {
-                        deleteIds.push(id);
-                    }
-                }
-
-                for (let id of deleteIds) {
-                    delete data.add.controls[id];
-                }
-            }
-
-            this.dataModel.loadData(data);
+            this.loadData(data);
             this.checkData();
         });
 
@@ -98,22 +84,18 @@ class NControl {
     }
 
     checkData() {
+        if (! (this.communicator.epStatus === this.endpoint.epStatus)) {
+            this.log("epStatus mismathc!!!", EndpointCommunicator.LOG_STATUS);
+        }
+
         // Check endpoint for configuration changes
         if (this.oldEndpoint.enabled != this.endpoint.enabled) {
-            if (this.endpoint.enabled) {
-                this.log("Endpoint enabled. Connecting");
-                this.communicator.connect();
-            }
-            else {
-                this.log("Endpoint disabled.  Disconnecting");
-                this.communicator.disconnect();
-            }
+            this.communicator.updateStatus({ enabled: this.endpoint.enabled});
         }
         else if (this.oldEndpoint.ip != this.endpoint.ip ||
                 this.oldEndpoint.port != this.endpoint.port ) {
             this.log("ip/port change. resetting communicator");
-            this.communicator.disconnect();
-            this.communicator.connect();
+            this.communicator.reset();
         }
     }
 
@@ -143,7 +125,7 @@ class NControl {
                 this.log("add-data error: " + data.error);
             }
             else {
-                this.dataModel.loadData(data);
+                this.loadData(data);
             }
 
             then.call(this);  // If the callback doesn't belong to this class, this could get weird
@@ -156,25 +138,13 @@ class NControl {
                 this.log("get-data error: " + data.error);
             }
             else {
-                this.dataModel.loadData(data);
+                this.loadData(data);
             }
 
             then.call(this);  // If the callback doesn't belong to this class, this could get weird
         });
     }
 
-    private updateData(reqData: IDCDataUpdate, then: () => void ) {
-        this.io.emit('update-data', reqData, data => {
-            if ( data.error ) {
-                this.log("update-data error: " + data.error);
-            }
-            else {
-                this.dataModel.loadData(data);
-            }
-
-            then.call(this);  // If the callback doesn't belong to this class, this could get weird
-        });
-    }
 
 
 
@@ -191,6 +161,9 @@ class NControl {
             this.log("endpoint data is missing");
             return;
         }
+
+        //
+        this.endpoint.epStatus.messengerConnected = true;
 
         this.getData(this.endpoint.type.itemRequestData(), this.getControls);
     }
@@ -240,13 +213,7 @@ class NControl {
             }
 
             this.log(`instantiating communicator ${commType}`);
-            this.communicator = new commClass();
-
-            if (typeof this.communicator.setConfig !== 'function') {
-                this.log("it doesn't look like you have a valid communicator class");
-            }
-
-            this.communicator.setConfig({
+            this.communicator = new commClass({
                 endpoint: this.endpoint,
                 controlUpdateCallback: (control, value) => {
                     this.pushControlUpdate(control, value);
@@ -255,22 +222,53 @@ class NControl {
                     this.pushEndpointStatusUpdate(status);
                 }
             });
+
+            if (typeof this.communicator.run !== 'function') {
+                this.log("it doesn't look like you have a valid communicator class");
+            }
         }
 
         this.syncControls();
-
-        if (this.endpoint.enabled) {
-            if (! this.communicator.connected) {
-                this.communicator.connect();
-            }
-            else {
-                this.log("communicator already connected");
-            }
-        }
-        else {
-            this.log("endpoint not enabled, not connecting");
-        }
     }
+
+    loadData(data: IDCDataExchange) {
+        if (this.endpoint.dataLoaded) {
+            this.oldEndpoint = new Endpoint(this.endpoint._id, <EndpointData>(this.endpoint.getDataObject()));
+        }
+
+        // Discard control data not related to this endpoint
+        if (data.add && data.add.controls) {
+            let deleteIds = [];
+            for (let id in data.add.controls) {
+                if ((<ControlData>data.add.controls[id]).endpoint_id !== this.endpoint._id) {
+                    deleteIds.push(id);
+                }
+            }
+
+            for (let id of deleteIds) {
+                delete data.add.controls[id];
+            }
+        }
+
+        // EndpointStatus is an object, this process is the authoritative source for many of its properties.
+        // Preserve the object reference and update fields accordingly.
+        if (this.endpoint.dataLoaded && data.add && data.add.endpoints && data.add.endpoints[this.config.endpointId]) {
+            // Defer to server for enabled
+            this.endpoint.enabled = (<EndpointData>data.add.endpoints[this.config.endpointId]).enabled;
+
+            // Preserve the current epStatus object.  loadData will overwrite it otherwise
+            (<EndpointData>data.add.endpoints[this.config.endpointId]).epStatus = this.endpoint.epStatus;
+        }
+
+        if (this.communicator) {
+            if (!(this.communicator.epStatus === this.endpoint.epStatus)) {
+                this.log("epStatus mismatch!!!", EndpointCommunicator.LOG_STATUS);
+            }
+        }
+
+        this.dataModel.loadData(data);
+    }
+
 
     pushControlUpdate(control: Control, value: any) {
         let update : ControlUpdateData = {
@@ -284,17 +282,19 @@ class NControl {
             ephemeral: control.ephemeral
         };
 
+        this.log("pushing control update");
         this.io.emit('control-updates', [update]);
     }
 
-    pushEndpointStatusUpdate(status: EndpointStatus) {
-        this.endpoint.status = status;
+    pushEndpointStatusUpdate(status: IEndpointStatus) {
+
         let update : IDCDataUpdate = {
             table: Endpoint.tableStr,
             _id: this.endpoint._id,
-            "set" : { status: status }
+            "set" : { epStatus : status }
         };
 
+        this.log("sending status update");
         this.updateData(update, () => {});
     }
 
@@ -344,6 +344,21 @@ class NControl {
 
         // Pass completed ControlTemplate set to communicator
         this.communicator.setTemplates(<IndexedDataSet<Control>>this.dataModel.tables[Control.tableStr]);
+        this.communicator.run();
+    }
+
+
+    private updateData(reqData: IDCDataUpdate, then: () => void ) {
+        this.io.emit('update-data', reqData, data => {
+            if ( data.error ) {
+                this.log("update-data error: " + data.error);
+            }
+            else {
+                this.loadData(data);
+            }
+
+            then.call(this);  // If the callback doesn't belong to this class, this could get weird
+        });
     }
 
 }
@@ -356,6 +371,6 @@ if (typeof process.argv[2] !== 'undefined') {
 
 
 let config = new DCConfig(configName);
-let dcc = new NControl();
+let dcc = new DCCommunicator();
 dcc.run(config);
 

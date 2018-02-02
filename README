@@ -44,9 +44,10 @@
    --- TCPCommunicator/Endpoint status management ---
 
  - Is endpoint enabled?  (Endpoint.enabled)
- - Is communicator running?
- - Is device reachable (ping)?
- - Is device connection established?
- - Can communicator log in to device?
- - Is device responsive?
+ - Is communicator connected to messenger? (Endpoint.communicatorConnected)
+    - In lieu of communicatorRunning, which is unknowable without communicator connection
+ - Is device reachable (ping)? (Endpoint.reachable)
+ - Is device connection established? (Endpoint.connectionEstablished)
+ - Can communicator log in to device? (Endpoint.loggedIn)
+ - Is device responsive? (Endpoint.responsive)
     - Keep log of last communication, establish maximum time between communication
