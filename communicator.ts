@@ -285,7 +285,7 @@ class DCCommunicator {
             ephemeral: control.ephemeral
         };
 
-        this.log("pushing control update");
+        this.log(`pushing ${update.name}: ${update.value}`, EndpointCommunicator.LOG_UPDATES);
         this.io.emit('control-updates', [update]);
     }
 
