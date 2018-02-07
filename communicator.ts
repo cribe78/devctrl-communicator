@@ -84,12 +84,15 @@ class DCCommunicator {
     }
 
     checkData() {
+        //this.log("checkData, endpoint enabled = " + this.endpoint.enabled, EndpointCommunicator.LOG_STATUS);
+
         if (! (this.communicator.epStatus === this.endpoint.epStatus)) {
             this.log("epStatus mismathc!!!", EndpointCommunicator.LOG_STATUS);
         }
 
         // Check endpoint for configuration changes
         if (this.oldEndpoint.enabled != this.endpoint.enabled) {
+            this.log("checkData, update enabled status", EndpointCommunicator.LOG_STATUS);
             this.communicator.updateStatus({ enabled: this.endpoint.enabled});
         }
         else if (this.oldEndpoint.ip != this.endpoint.ip ||
@@ -232,9 +235,6 @@ class DCCommunicator {
     }
 
     loadData(data: IDCDataExchange) {
-        if (this.endpoint.dataLoaded) {
-            this.oldEndpoint = new Endpoint(this.endpoint._id, <EndpointData>(this.endpoint.getDataObject()));
-        }
 
         // Discard control data not related to this endpoint
         if (data.add && data.add.controls) {
@@ -253,11 +253,14 @@ class DCCommunicator {
         // EndpointStatus is an object, this process is the authoritative source for many of its properties.
         // Preserve the object reference and update fields accordingly.
         if (this.endpoint.dataLoaded && data.add && data.add.endpoints && data.add.endpoints[this.config.endpointId]) {
+            this.oldEndpoint = new Endpoint(this.endpoint._id, <EndpointData>(this.endpoint.getDataObject()));
+
+            let epUpdate = <EndpointData>data.add.endpoints[this.config.endpointId];
             // Defer to server for enabled
-            this.endpoint.enabled = (<EndpointData>data.add.endpoints[this.config.endpointId]).enabled;
+            this.endpoint.enabled = epUpdate.enabled;
 
             // Preserve the current epStatus object.  loadData will overwrite it otherwise
-            (<EndpointData>data.add.endpoints[this.config.endpointId]).epStatus = this.endpoint.epStatus;
+            epUpdate.epStatus = this.endpoint.epStatus;
         }
 
         if (this.communicator) {
@@ -294,7 +297,8 @@ class DCCommunicator {
             "set" : { epStatus : status }
         };
 
-        this.log("sending status update");
+        let statusStr = this.endpoint.statusStr;
+        this.log("sending status update: " + statusStr, EndpointCommunicator.LOG_STATUS);
         this.updateData(update, () => {});
     }
 
