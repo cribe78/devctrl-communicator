@@ -8,19 +8,23 @@ import {
     Endpoint,
     EndpointData,
     IEndpointStatus,
+    IDCDataAdd,
     IDCDataRequest,
-    IDCDataUpdate,
+    IDCDataExchange,
+    IDCEndpointStatusUpdate,
     IndexedDataSet
 } from "@devctrl/common";
 import { IEndpointCommunicator, EndpointCommunicator } from "@devctrl/lib-communicator";
 import {CommunicatorLoader} from "./CommunicatorLoader";
 import { DCConfig } from "./config";
-import {IDCDataExchange} from "../common/DCSerializable";
+import {DCSerializableData} from "../common/DCSerializable";
+
 
 
 class DCCommunicator {
     io: SocketIOClient.Socket;
     endpoint: Endpoint;
+    userInfo_id: string;
     oldEndpoint: Endpoint;
     dataModel: DCDataModel;
     controls: IndexedDataSet<Control>;
@@ -65,7 +69,7 @@ class DCCommunicator {
         this.io.on('reconnect', () => {
             this.registerEndpoint();
             if (this.endpoint) {
-                this.pushEndpointStatusUpdate(this.endpoint.epStatus);
+                this.pushEndpointStatusUpdate();
             }
         });
 
@@ -73,7 +77,12 @@ class DCCommunicator {
             this.log(`websocket connection error: ${obj}`);
         });
 
-        this.io.on('control-data', data => {
+        this.io.on('control-data', (data : IDCDataExchange) => {
+            if (data.userInfo_id == this.userInfo_id) {
+                this.log("ignoring broadcast of our data", EndpointCommunicator.LOG_DATA_MODEL);
+                return;
+            }
+
             this.loadData(data);
             this.checkData();
         });
@@ -113,6 +122,7 @@ class DCCommunicator {
 
     getControls() {
         let reqData = {
+            _id: this.guid(),
             table: Control.tableStr,
             params: {
                 endpoint_id: this.endpoint._id
@@ -122,16 +132,22 @@ class DCCommunicator {
         this.getData(reqData, this.launchCommunicator);
     }
 
-    private addData(reqData: any, then: () => void) {
-        this.io.emit('add-data', reqData, data => {
-            if ( data.error ) {
-                this.log("add-data error: " + data.error);
-            }
-            else {
-                this.loadData(data);
-            }
+    private addData(reqData: {[index:string] : DCSerializableData[]}, then: () => void) {
+        this.io.emit('add-data',
+            {
+                _id: this.guid(),
+                userInfo_id: this.userInfo_id,
+                add: reqData
+            },
+            data => {
+                if ( data.error ) {
+                    this.log("add-data error: " + data.error);
+                }
+                else {
+                    this.loadData(data);
+                }
 
-            then.call(this);  // If the callback doesn't belong to this class, this could get weird
+                then.call(this);  // If the callback doesn't belong to this class, this could get weird
         });
     }
 
@@ -149,12 +165,10 @@ class DCCommunicator {
     }
 
 
-
-
     getEndpointConfig() {
         this.endpoint = this.dataModel.getItem(this.config.endpointId, Endpoint.tableStr) as Endpoint;
 
-        let reqData = this.endpoint.itemRequestData();
+        let reqData = this.endpoint.itemRequestData(this.guid());
 
         this.getData(reqData, this.getEndpointTypeConfig);
     }
@@ -168,7 +182,7 @@ class DCCommunicator {
         //
         this.endpoint.epStatus.messengerConnected = true;
 
-        this.getData(this.endpoint.type.itemRequestData(), this.getControls);
+        this.getData(this.endpoint.type.itemRequestData(this.guid()), this.getControls);
     }
 
     guid() : string {
@@ -221,8 +235,8 @@ class DCCommunicator {
                 controlUpdateCallback: (control, value) => {
                     this.pushControlUpdate(control, value);
                 },
-                statusUpdateCallback: (status) => {
-                    this.pushEndpointStatusUpdate(status);
+                statusUpdateCallback: () => {
+                    this.pushEndpointStatusUpdate();
                 }
             });
 
@@ -257,7 +271,7 @@ class DCCommunicator {
 
             let epUpdate = <EndpointData>data.add.endpoints[this.config.endpointId];
             // Defer to server for enabled
-            this.endpoint.enabled = epUpdate.enabled;
+            this.endpoint.epStatus.enabled = epUpdate.epStatus.enabled;
 
             // Preserve the current epStatus object.  loadData will overwrite it otherwise
             epUpdate.epStatus = this.endpoint.epStatus;
@@ -289,13 +303,13 @@ class DCCommunicator {
         this.io.emit('control-updates', [update]);
     }
 
-    pushEndpointStatusUpdate(status: IEndpointStatus) {
-
-        let update : IDCDataUpdate = {
-            table: Endpoint.tableStr,
-            _id: this.endpoint._id,
-            "set" : { epStatus : status }
+    pushEndpointStatusUpdate() {
+        let update : IDCDataExchange = {
+            _id: this.guid(),
+            userInfo_id: this.userInfo_id,
+            add: { endpoints: {}}
         };
+        update.add.endpoints[this.endpoint._id] = this.endpoint.getDataObject();
 
         let statusStr = this.endpoint.statusStr;
         this.log("sending status update: " + statusStr, EndpointCommunicator.LOG_STATUS);
@@ -304,7 +318,12 @@ class DCCommunicator {
 
     registerEndpoint() {
         //TODO: multiple register messages are being sent on reconnect
-        this.io.emit('register-endpoint', { endpoint_id : this.config.endpointId});
+        this.io.emit('register-endpoint', { endpoint_id : this.config.endpointId}, (data) => {
+            if (data.userInfo_id) {
+                this.userInfo_id = data.userInfo_id;
+                this.log("userInfo_id set to " + this.userInfo_id, EndpointCommunicator.LOG_CONNECTION);
+            }
+        });
     }
 
     syncControls() {
@@ -352,7 +371,7 @@ class DCCommunicator {
     }
 
 
-    private updateData(reqData: IDCDataUpdate, then: () => void ) {
+    private updateData(reqData: IDCDataExchange, then: () => void ) {
         this.io.emit('update-data', reqData, data => {
             if ( data.error ) {
                 this.log("update-data error: " + data.error);
