@@ -5,6 +5,7 @@ import {
     ControlData,
     ControlUpdateData,
     DCDataModel,
+    DCSerializableData,
     Endpoint,
     EndpointData,
     IEndpointStatus,
@@ -17,7 +18,7 @@ import {
 import { IEndpointCommunicator, EndpointCommunicator } from "@devctrl/lib-communicator";
 import {CommunicatorLoader} from "./CommunicatorLoader";
 import { DCConfig } from "./config";
-import {DCSerializableData} from "../common/DCSerializable";
+
 
 
 
