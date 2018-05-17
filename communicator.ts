@@ -18,6 +18,7 @@ import {
 import { IEndpointCommunicator, EndpointCommunicator } from "@devctrl/lib-communicator";
 import {CommunicatorLoader} from "./CommunicatorLoader";
 import { DCConfig } from "./config";
+import * as fs from 'fs';
 
 
 
@@ -393,6 +394,13 @@ let configName = "dcc";
 if (typeof process.argv[2] !== 'undefined') {
     console.log("arg 2 is " + process.argv[2]);
     configName = process.argv[2];
+}
+
+if (fs.existsSync("package.json")) {
+    let pkgJson = fs.readFileSync("package.json", 'utf8');
+    let pkgObj = JSON.parse(pkgJson);
+
+    console.log(`Devctrl Communicator version ${pkgObj.version} launched`);
 }
 
 
