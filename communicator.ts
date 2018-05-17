@@ -101,14 +101,16 @@ class DCCommunicator {
         }
 
         // Check endpoint for configuration changes
-        if (this.oldEndpoint.enabled != this.endpoint.enabled) {
-            this.log("checkData, update enabled status", EndpointCommunicator.LOG_STATUS);
-            this.communicator.updateStatus({ enabled: this.endpoint.enabled});
-        }
-        else if (this.oldEndpoint.ip != this.endpoint.ip ||
-                this.oldEndpoint.port != this.endpoint.port ) {
-            this.log("ip/port change. resetting communicator");
-            this.communicator.reset();
+        if (this.oldEndpoint) {
+            if (this.oldEndpoint.enabled != this.endpoint.enabled) {
+                this.log("checkData, update enabled status", EndpointCommunicator.LOG_STATUS);
+                this.communicator.updateStatus({enabled: this.endpoint.enabled});
+            }
+            else if (this.oldEndpoint.ip != this.endpoint.ip ||
+                this.oldEndpoint.port != this.endpoint.port) {
+                this.log("ip/port change. resetting communicator");
+                this.communicator.reset();
+            }
         }
     }
 
