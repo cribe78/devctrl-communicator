@@ -396,6 +396,7 @@ if (typeof process.argv[2] !== 'undefined') {
     configName = process.argv[2];
 }
 
+//TODO: use __dirname to construct path to package.json
 if (fs.existsSync("package.json")) {
     let pkgJson = fs.readFileSync("package.json", 'utf8');
     let pkgObj = JSON.parse(pkgJson);

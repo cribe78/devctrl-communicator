@@ -52,6 +52,8 @@ export class DCConfig {
             }
         }
 
+        //TODO: print helpful message on parse/syntax errors
+
         for (let confPath of configFiles) {
             let confJson = fs.readFileSync(confPath, 'utf8');
             let confObj = JSON.parse(confJson);
