@@ -13,6 +13,7 @@ export class DCConfig {
     authId = "overrideme";
     identifierName = "identifier";
     endpointPassword = "password";
+    dummyCommunicator = false;
 
     configParams = [
         'wsUrl',
@@ -25,7 +26,8 @@ export class DCConfig {
         'ioPath',
         'authId',
         'identifierName',
-        'endpointPassword'
+        'endpointPassword',
+        'dummyCommunicator'
     ];
 
 

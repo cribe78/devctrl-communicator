@@ -8,14 +8,14 @@ import {
     DCSerializableData,
     Endpoint,
     EndpointData,
-    IEndpointStatus,
-    IDCDataAdd,
     IDCDataRequest,
     IDCDataExchange,
-    IDCEndpointStatusUpdate,
     IndexedDataSet
 } from "@devctrl/common";
-import { IEndpointCommunicator, EndpointCommunicator } from "@devctrl/lib-communicator";
+import { IEndpointCommunicator,
+        EndpointCommunicator,
+        DummyCommunicator
+} from "@devctrl/lib-communicator";
 import {CommunicatorLoader} from "./CommunicatorLoader";
 import { DCConfig } from "./config";
 import * as fs from 'fs';
@@ -224,25 +224,38 @@ class DCCommunicator {
         }
 
         if (! this.communicator) {
-            let commType = this.endpoint.type.communicatorClass;
-            let cl = new CommunicatorLoader();
-
-            let commClass = cl.communicators[commType];
-
-            if (! commClass) {
-                throw new Error("communicator class not found: " + commType);
+            if (this.config.dummyCommunicator) {
+                this.communicator = new DummyCommunicator({
+                    endpoint: this.endpoint,
+                    controlUpdateCallback: (control, value) => {
+                        this.pushControlUpdate(control, value);
+                    },
+                    statusUpdateCallback: () => {
+                        this.pushEndpointStatusUpdate();
+                    }
+                });
             }
+            else {
+                let commType = this.endpoint.type.communicatorClass;
+                let cl = new CommunicatorLoader();
 
-            this.log(`instantiating communicator ${commType}`);
-            this.communicator = new commClass({
-                endpoint: this.endpoint,
-                controlUpdateCallback: (control, value) => {
-                    this.pushControlUpdate(control, value);
-                },
-                statusUpdateCallback: () => {
-                    this.pushEndpointStatusUpdate();
+                let commClass = cl.communicators[commType];
+
+                if (!commClass) {
+                    throw new Error("communicator class not found: " + commType);
                 }
-            });
+
+                this.log(`instantiating communicator ${commType}`);
+                this.communicator = new commClass({
+                    endpoint: this.endpoint,
+                    controlUpdateCallback: (control, value) => {
+                        this.pushControlUpdate(control, value);
+                    },
+                    statusUpdateCallback: () => {
+                        this.pushEndpointStatusUpdate();
+                    }
+                });
+            }
 
             if (typeof this.communicator.run !== 'function') {
                 this.log("it doesn't look like you have a valid communicator class");
