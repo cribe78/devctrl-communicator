@@ -317,6 +317,7 @@ class DCCommunicator {
         };
 
         this.log(`pushing ${update.name}: ${update.value}`, EndpointCommunicator.LOG_UPDATES);
+        //TODO: call back to communicator if there is a server side error
         this.io.emit('control-updates', [update]);
     }
 
