@@ -262,6 +262,8 @@ class DCCommunicator {
             }
         }
 
+
+        this.syncControlsPassNumber = 0;
         this.syncControls();
     }
 
@@ -347,45 +349,45 @@ class DCCommunicator {
     syncControls() {
         this.syncControlsPassNumber++;
 
-        if (this.syncControlsPassNumber > 2) {
+        if (this.syncControlsPassNumber !== 1) {
             throw new Error("failed to sync control templates");
         }
 
-        // Don't do this part twice
-        if (this.syncControlsPassNumber == 1) {
-            // Get ControlTemplates from communicator
-            let controlTemplates = this.communicator.getControlTemplates();
+        // Get ControlTemplates from communicator
+        let controlTemplates = this.communicator.getControlTemplates();
 
-            let newControls = [];
-            let controlsByCtid = {};
+        let newControls = [];
+        let controlsByCtid = {};
 
-            for (let id in this.controls) {
-                let ct = this.controls[id];
-                controlsByCtid[ct.ctid] = ct;
-            }
+        for (let id in this.controls) {
+            let ct = this.controls[id];
+            controlsByCtid[ct.ctid] = ct;
+        }
 
-            // Match communicator control templates to server control templates by ctid
-            for (let ctid in controlTemplates) {
-                if (! controlsByCtid[ctid]) {
-                    newControls.push(controlTemplates[ctid].getDataObject());
-                }
-            }
-
-            // newControls is an array of templates to create
-            // Create new ControlTemplates on server
-            if (newControls.length > 0) {
-                this.log("adding new controls");
-                this.addData({ controls: newControls}, this.syncControls);
-
-                return;
+        // Match communicator control templates to server control templates by ctid
+        for (let ctid in controlTemplates) {
+            if (! controlsByCtid[ctid]) {
+                newControls.push(controlTemplates[ctid].getDataObject());
             }
         }
 
-        this.log("controls successfully synced!");
+        // newControls is an array of templates to create
+        // Create new ControlTemplates on server
+        if (newControls.length > 0) {
+            this.log("adding new controls");
+            this.addData({ controls: newControls}, this.syncControlsComplete);
+        }
+        else {
+            this.syncControlsComplete();
+        }
+    }
 
-        // Pass completed ControlTemplate set to communicator
-        this.communicator.setTemplates(<IndexedDataSet<Control>>this.dataModel.tables[Control.tableStr]);
-        this.communicator.run();
+    syncControlsComplete() {
+      this.log("controls successfully synced!");
+
+      // Pass completed ControlTemplate set to communicator
+      this.communicator.setTemplates(<IndexedDataSet<Control>>this.dataModel.tables[Control.tableStr]);
+      this.communicator.run();
     }
 
 
