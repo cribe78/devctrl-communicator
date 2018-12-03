@@ -14,6 +14,7 @@ export class DCConfig {
     identifierName = "identifier";
     endpointPassword = "password";
     dummyCommunicator = false;
+    logDir = "/var/log/devctrl";
 
     configParams = [
         'wsUrl',
@@ -27,7 +28,8 @@ export class DCConfig {
         'authId',
         'identifierName',
         'endpointPassword',
-        'dummyCommunicator'
+        'dummyCommunicator',
+        'logDir'
     ];
 
 
